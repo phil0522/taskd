@@ -33,12 +33,17 @@ func (s *SnippetServer) SearchShellSnippet(ctx context.Context, req *pb.ShellSni
 
 	for _, snippet := range s.snipperManger.globalShellSnippets {
 		log.Printf("add snippet %v", snippet)
-		resp.ShellSnippet = append(resp.ShellSnippet, snippet)
+		resp.ShellSnippets = append(resp.ShellSnippets, snippet)
 	}
+
+	return resp, nil
+}
+
+// QuitServer quits the server.
+func (s *SnippetServer) QuitServer(ctx context.Context, in *pb.QuitServerRequest) (*pb.QuitServerResponse, error) {
 	go func() {
 		time.Sleep(time.Second * 1)
 		s.GrpcServer.Stop()
 	}()
-
-	return resp, nil
+	return &pb.QuitServerResponse{}, nil
 }

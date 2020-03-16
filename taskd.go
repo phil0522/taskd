@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -45,7 +46,27 @@ func formatSnippet(snippet *pb.ShellSnippet) {
 	cmd := strings.ReplaceAll(snippet.GetSnippetCommand(), "\n", "")
 	fmt.Printf("%s:%s:%s\n", name, desc, cmd)
 }
-func request() {
+
+func searchShell(ctx context.Context, client pb.SnippetServiceClient) {
+	resp, err := client.SearchShellSnippet(ctx, &pb.ShellSnippetRequest{})
+
+	//(ctx, &pb.ShellSnippetRequest{})
+	if err != nil {
+		log.Fatalf("failed to execute rpc %s", err.Error())
+	}
+	for _, snippet := range resp.ShellSnippets {
+		formatSnippet(snippet)
+	}
+}
+
+func killServer(ctx context.Context, client pb.SnippetServiceClient) {
+	_, err := client.QuitServer(ctx, &pb.QuitServerRequest{})
+	if err != nil {
+		log.Fatalf("failed to quit server rpc %s", err.Error())
+	}
+}
+
+func clientCall(callback func(context.Context, pb.SnippetServiceClient)) {
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to create connection, %s", err.Error())
@@ -55,16 +76,23 @@ func request() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	resp, err := client.SearchShellSnippet(ctx, &pb.ShellSnippetRequest{})
-	if err != nil {
-		log.Fatalf("failed to execute rpc %s", err.Error())
-	}
-	for _, snippet := range resp.ShellSnippet {
-		formatSnippet(snippet)
-	}
+	callback(ctx, client)
 }
 
+func executeCommand() {
+	if flag.NArg() > 0 && flag.Arg(0) == "kill-server" {
+		clientCall(killServer)
+		return
+	}
+	clientCall(searchShell)
+}
+
+const (
+	isDebugger = false
+)
+
 func main() {
+	flag.Parse()
 	userRoot := os.Getenv("HOME")
 	context := daemon.Context{
 		PidFileName: "taskd.lock",
@@ -76,8 +104,16 @@ func main() {
 
 	child, _ := context.Search()
 	if child != nil {
-		log.Printf("Server has been already serving")
-		request()
+		if isDebugger {
+			log.Printf("Server has been already serving")
+		}
+		executeCommand()
+		return
+	}
+
+	if flag.NArg() > 0 && flag.Arg(0) == "kill-server" {
+		log.Printf("server is not running, do nothing")
+		return
 	}
 
 	child, err := context.Reborn()
@@ -87,7 +123,7 @@ func main() {
 
 	if child != nil {
 		time.Sleep(time.Second * 2)
-		request()
+		executeCommand()
 	} else {
 		serve()
 		defer context.Release()
