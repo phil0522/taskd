@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	category = flag.String("category", "", "only output snippet of specific category")
+	category = flag.String("category", "shell", "only output snippet of specific category")
 )
 
 func serve() {
