@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/phil0522/taskd/pkg/server"
@@ -20,6 +21,8 @@ const (
 	serverAddr = "127.0.0.1:6398"
 )
 
+var debugLogging = false
+
 func serve() {
 	lis, err := net.Listen("tcp4", serverAddr)
 	if err != nil {
@@ -29,12 +32,19 @@ func serve() {
 	snipperServer := &server.SnippetServer{
 		GrpcServer: grpcServer,
 	}
+	snipperServer.Initialize()
 	pb.RegisterSnippetServiceServer(grpcServer, snipperServer)
 
 	grpcServer.Serve(lis)
 	log.Printf("server exit")
 }
 
+func formatSnippet(snippet *pb.ShellSnippet) {
+	name := strings.ReplaceAll(snippet.GetSnippetName(), ":", "")
+	desc := strings.ReplaceAll(snippet.GetSnippetDescription(), ":", "")
+	cmd := strings.ReplaceAll(snippet.GetSnippetCommand(), "\n", "")
+	fmt.Printf("%s:%s:%s\n", name, desc, cmd)
+}
 func request() {
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	if err != nil {
@@ -49,12 +59,13 @@ func request() {
 	if err != nil {
 		log.Fatalf("failed to execute rpc %s", err.Error())
 	}
-	log.Printf("get resposne %v", resp)
+	for _, snippet := range resp.ShellSnippet {
+		formatSnippet(snippet)
+	}
 }
 
 func main() {
 	userRoot := os.Getenv("HOME")
-	fmt.Printf("%s\n", userRoot)
 	context := daemon.Context{
 		PidFileName: "taskd.lock",
 		PidFilePerm: 0644,
@@ -75,8 +86,7 @@ func main() {
 	}
 
 	if child != nil {
-		log.Printf("I am the parent, my pid %d and my child pid %d", os.Getpid(), child.Pid)
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 2)
 		request()
 	} else {
 		serve()

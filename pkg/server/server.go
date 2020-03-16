@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"log"
+	"time"
 
 	pb "github.com/phil0522/taskd/proto"
 	"google.golang.org/grpc"
@@ -12,15 +13,15 @@ import (
 type SnippetServer struct {
 	GrpcServer *grpc.Server
 	serveCount int32
+
+	snipperManger *snipperManger
 }
 
-// Serve starts the server until it is told to stop.
-func (s *SnippetServer) Serve() {
-}
-
-// Stop stops the server
-func (s *SnippetServer) Stop() {
-
+// Initialize initialize the server
+func (s *SnippetServer) Initialize() {
+	log.Printf("initialize snippet manger.")
+	s.snipperManger = &snipperManger{}
+	s.snipperManger.initialize()
 }
 
 // SearchShellSnippet returns all snippets match search criteria
@@ -30,14 +31,14 @@ func (s *SnippetServer) SearchShellSnippet(ctx context.Context, req *pb.ShellSni
 	log.Printf("#%d, req: %v", s.serveCount, req)
 	s.serveCount++
 
-	snippet := &pb.ShellSnippet{
-		SnippetName:        "SnippetName",
-		SnippetCommand:     "echo Helloworld",
-		SnippetDescription: "This is the test snippet",
+	for _, snippet := range s.snipperManger.globalShellSnippets {
+		log.Printf("add snippet %v", snippet)
+		resp.ShellSnippet = append(resp.ShellSnippet, snippet)
 	}
-	resp.ShellSnippet = append(resp.ShellSnippet, snippet)
-	if s.serveCount == 2 {
+	go func() {
+		time.Sleep(time.Second * 1)
 		s.GrpcServer.Stop()
-	}
+	}()
+
 	return resp, nil
 }
