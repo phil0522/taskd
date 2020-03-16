@@ -10,20 +10,26 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-const (
+var (
 	repositoryPath = ".taskd"
 )
+
+func init() {
+	repositoryPath = os.Getenv("TASKD_ROOT")
+	if repositoryPath == "" {
+		userRoot := os.Getenv("HOME")
+		repositoryPath = path.Join(userRoot, ".taskd")
+	}
+}
 
 type snipperManger struct {
 	globalShellSnippets []*pb.ShellSnippet
 }
 
 func (s *snipperManger) initialize() {
-	userRoot := os.Getenv("HOME")
-	dirPath := path.Join(userRoot, repositoryPath)
-	logger.Debugf("scan dir %s", dirPath)
+	logger.Debugf("scan dir %s", repositoryPath)
 
-	filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(repositoryPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			logger.Debugf("walk file error %s", err.Error())
 			return nil
@@ -44,7 +50,7 @@ func (s *snipperManger) initialize() {
 			logger.Debugf("failed to load %s, error: %s", path, err.Error())
 		}
 
-		basePath, err := filepath.Rel(dirPath, path)
+		basePath, err := filepath.Rel(repositoryPath, path)
 		basePath = strings.TrimSuffix(basePath, ".ini")
 		for _, section := range cfg.Sections() {
 			snippet := &pb.ShellSnippet{}
