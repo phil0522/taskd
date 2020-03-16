@@ -34,7 +34,7 @@ func (s *SnippetServer) SearchShellSnippet(ctx context.Context, req *pb.ShellSni
 	logger.Debugf("#%d, req: %v", s.serveCount, req)
 	s.serveCount++
 
-	for _, snippet := range s.snipperManger.globalShellSnippets {
+	for _, snippet := range s.snipperManger.snippetsByCategory[req.Category] {
 		logger.Debugf("add snippet %v", snippet)
 		resp.ShellSnippets = append(resp.ShellSnippets, snippet)
 	}

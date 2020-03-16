@@ -7,6 +7,9 @@ message ShellSnippetRequest {
 
   // The current input.
   string cmd_prefix = 2;
+
+  // Category of the snippet, this is group name part of snippet name.
+  string category = 3;
 }
 
 message ShellSnippetResponse {

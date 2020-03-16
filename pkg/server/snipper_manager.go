@@ -23,11 +23,13 @@ func init() {
 }
 
 type snipperManger struct {
-	globalShellSnippets []*pb.ShellSnippet
+	snippetsByCategory map[string][]*pb.ShellSnippet
 }
 
 func (s *snipperManger) initialize() {
 	logger.Debugf("scan dir %s", repositoryPath)
+
+	s.snippetsByCategory = make(map[string][]*pb.ShellSnippet)
 
 	filepath.Walk(repositoryPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -52,6 +54,17 @@ func (s *snipperManger) initialize() {
 
 		basePath, err := filepath.Rel(repositoryPath, path)
 		basePath = strings.TrimSuffix(basePath, ".ini")
+		segments := strings.Split(basePath, "/")
+
+		logger.Debugf("segments: %s %v", basePath, segments)
+		if len(segments) == 1 {
+			return nil
+		}
+		basePath = filepath.Join(segments[1:]...)
+		category := segments[0]
+
+		snippetsOfCategory, _ := s.snippetsByCategory[category]
+
 		for _, section := range cfg.Sections() {
 			snippet := &pb.ShellSnippet{}
 			snippet.SnippetName = basePath + "/" + section.Name()
@@ -62,8 +75,11 @@ func (s *snipperManger) initialize() {
 			if snippet.SnippetCommand == "" {
 				continue
 			}
-			s.globalShellSnippets = append(s.globalShellSnippets, snippet)
+			snippetsOfCategory = append(snippetsOfCategory, snippet)
 		}
+		logger.Debugf("adding category %s %v", category, snippetsOfCategory)
+		s.snippetsByCategory[category] = snippetsOfCategory
+
 		return nil
 	})
 }

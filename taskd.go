@@ -25,6 +25,10 @@ const (
 	serverAddr = "127.0.0.1:6398"
 )
 
+var (
+	category = flag.String("category", "", "only output snippet of specific category")
+)
+
 func serve() {
 	log.Printf("starting server")
 	lis, err := net.Listen("tcp4", serverAddr)
@@ -55,9 +59,10 @@ func formatSnippet(snippet *pb.ShellSnippet) {
 }
 
 func searchShell(ctx context.Context, client pb.SnippetServiceClient) {
-	resp, err := client.SearchShellSnippet(ctx, &pb.ShellSnippetRequest{})
+	req := &pb.ShellSnippetRequest{}
+	req.Category = *category
+	resp, err := client.SearchShellSnippet(ctx, req)
 
-	//(ctx, &pb.ShellSnippetRequest{})
 	if err != nil {
 		log.Fatalf("failed to execute rpc %s", err.Error())
 	}
@@ -102,6 +107,11 @@ func main() {
 
 	if flag.NArg() > 0 && flag.Arg(0) == "version" {
 		fmt.Println(version)
+		return
+	}
+
+	if flag.NArg() == 0 && *category == "" {
+		logger.Infof("category must be specified.")
 		return
 	}
 
