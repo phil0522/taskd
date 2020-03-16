@@ -2,24 +2,27 @@ package server
 
 import (
 	"context"
-	"log"
 	"time"
 
+	"github.com/phil0522/taskd/pkg/slog"
 	pb "github.com/phil0522/taskd/proto"
 	"google.golang.org/grpc"
 )
 
 // SnippetServer serve the snippet service.
 type SnippetServer struct {
-	GrpcServer *grpc.Server
-	serveCount int32
-
+	GrpcServer    *grpc.Server
+	serveCount    int32
 	snipperManger *snipperManger
 }
 
+var (
+	logger = slog.New("server")
+)
+
 // Initialize initialize the server
 func (s *SnippetServer) Initialize() {
-	log.Printf("initialize snippet manger.")
+	logger.Debugf("initialize snippet manger.")
 	s.snipperManger = &snipperManger{}
 	s.snipperManger.initialize()
 }
@@ -28,11 +31,11 @@ func (s *SnippetServer) Initialize() {
 func (s *SnippetServer) SearchShellSnippet(ctx context.Context, req *pb.ShellSnippetRequest) (*pb.ShellSnippetResponse, error) {
 	resp := &pb.ShellSnippetResponse{}
 
-	log.Printf("#%d, req: %v", s.serveCount, req)
+	logger.Debugf("#%d, req: %v", s.serveCount, req)
 	s.serveCount++
 
 	for _, snippet := range s.snipperManger.globalShellSnippets {
-		log.Printf("add snippet %v", snippet)
+		logger.Debugf("add snippet %v", snippet)
 		resp.ShellSnippets = append(resp.ShellSnippets, snippet)
 	}
 

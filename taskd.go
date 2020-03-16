@@ -9,41 +9,48 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/phil0522/taskd/pkg/server"
+	"github.com/phil0522/taskd/pkg/slog"
 	pb "github.com/phil0522/taskd/proto"
 	"google.golang.org/grpc"
 	"gopkg.in/sevlyar/go-daemon.v0"
 )
 
 const (
+	version    = "0.1"
 	serverAddr = "127.0.0.1:6398"
 )
 
-var debugLogging = false
-
 func serve() {
+	log.Printf("starting server")
 	lis, err := net.Listen("tcp4", serverAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+
+	defer func() {
+		log.Printf("server exit")
+	}()
 	grpcServer := grpc.NewServer()
 	snipperServer := &server.SnippetServer{
 		GrpcServer: grpcServer,
 	}
+
 	snipperServer.Initialize()
 	pb.RegisterSnippetServiceServer(grpcServer, snipperServer)
 
 	grpcServer.Serve(lis)
-	log.Printf("server exit")
 }
 
 func formatSnippet(snippet *pb.ShellSnippet) {
 	name := strings.ReplaceAll(snippet.GetSnippetName(), ":", "")
 	desc := strings.ReplaceAll(snippet.GetSnippetDescription(), ":", "")
-	cmd := strings.ReplaceAll(snippet.GetSnippetCommand(), "\n", "")
+	cmd := snippet.GetSnippetCommand()
+	//cmd := strings.ReplaceAll(snippet.GetSnippetCommand(), "\n", "")
 	fmt.Printf("%s:%s:%s\n", name, desc, cmd)
 }
 
@@ -87,26 +94,29 @@ func executeCommand() {
 	clientCall(searchShell)
 }
 
-const (
-	isDebugger = false
-)
-
 func main() {
+	flag.BoolVar(&slog.VerboseLog, "verbose", false, "enable debugging log")
 	flag.Parse()
+
+	logger := slog.New("main")
+
+	if flag.NArg() > 0 && flag.Arg(0) == "version" {
+		fmt.Println(version)
+		return
+	}
+
 	userRoot := os.Getenv("HOME")
 	context := daemon.Context{
-		PidFileName: "taskd.lock",
+		PidFileName: filepath.Join(userRoot, "taskd.lock"),
 		PidFilePerm: 0644,
-		LogFileName: "taskd.log",
+		LogFileName: filepath.Join(userRoot, "taskd.log"),
 		LogFilePerm: 0666,
 		WorkDir:     userRoot,
 	}
 
 	child, _ := context.Search()
 	if child != nil {
-		if isDebugger {
-			log.Printf("Server has been already serving")
-		}
+		logger.Debugf("Server has been already serving")
 		executeCommand()
 		return
 	}
@@ -122,7 +132,7 @@ func main() {
 	}
 
 	if child != nil {
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Second * 1)
 		executeCommand()
 	} else {
 		serve()

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -22,11 +21,11 @@ type snipperManger struct {
 func (s *snipperManger) initialize() {
 	userRoot := os.Getenv("HOME")
 	dirPath := path.Join(userRoot, repositoryPath)
-	log.Printf("scan dir %s", dirPath)
+	logger.Debugf("scan dir %s", dirPath)
 
 	filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Printf("walk file error %s", err.Error())
+			logger.Debugf("walk file error %s", err.Error())
 			return nil
 		}
 		if info.IsDir() {
@@ -36,13 +35,13 @@ func (s *snipperManger) initialize() {
 			return nil
 		}
 
-		log.Printf("loading %s\n", path)
+		logger.Debugf("loading %s\n", path)
 		cfg, err := ini.LoadSources(ini.LoadOptions{
 			AllowPythonMultilineValues: true,
 		}, path)
 
 		if err != nil {
-			log.Printf("failed to load %s, error: %s", path, err.Error())
+			logger.Debugf("failed to load %s, error: %s", path, err.Error())
 		}
 
 		basePath, err := filepath.Rel(dirPath, path)
@@ -50,7 +49,7 @@ func (s *snipperManger) initialize() {
 		for _, section := range cfg.Sections() {
 			snippet := &pb.ShellSnippet{}
 			snippet.SnippetName = basePath + "/" + section.Name()
-			log.Printf("name: %s", snippet.SnippetName)
+			logger.Debugf("name: %s", snippet.SnippetName)
 			snippet.SnippetDescription = section.Key("desc").MustString("")
 			snippet.SnippetCommand = section.Key("cmd").MustString("")
 
