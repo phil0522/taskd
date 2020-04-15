@@ -31,7 +31,7 @@ func (s *snipperManger) initialize() {
 
 	s.snippetsByCategory = make(map[string][]*pb.ShellSnippet)
 
-	filepath.Walk(repositoryPath, func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(repositoryPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			logger.Debugf("walk file error %s", err.Error())
 			return nil
@@ -52,7 +52,7 @@ func (s *snipperManger) initialize() {
 			logger.Debugf("failed to load %s, error: %s", path, err.Error())
 		}
 
-		basePath, err := filepath.Rel(repositoryPath, path)
+		basePath, _ := filepath.Rel(repositoryPath, path)
 		basePath = strings.TrimSuffix(basePath, ".ini")
 		segments := strings.Split(basePath, "/")
 
@@ -63,7 +63,7 @@ func (s *snipperManger) initialize() {
 		basePath = filepath.Join(segments[1:]...)
 		category := segments[0]
 
-		snippetsOfCategory, _ := s.snippetsByCategory[category]
+		snippetsOfCategory := s.snippetsByCategory[category]
 
 		for _, section := range cfg.Sections() {
 			snippet := &pb.ShellSnippet{}
