@@ -1,6 +1,6 @@
 module github.com/phil0522/taskd
 
-go 1.13
+go 1.18
 
 require (
 	github.com/golang/protobuf v1.3.5
