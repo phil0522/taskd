@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/phil0522/taskd/pkg/server"
@@ -64,7 +65,8 @@ func searchShell(ctx context.Context, client pb.SnippetServiceClient) {
 	resp, err := client.SearchShellSnippet(ctx, req)
 
 	if err != nil {
-		log.Fatalf("failed to execute rpc %s", err.Error())
+		fmt.Printf("failed %+v\n", err)
+		log.Fatalf("failed to execute rpc %+v", err)
 	}
 	for _, snippet := range resp.ShellSnippets {
 		formatSnippet(snippet)
@@ -110,7 +112,7 @@ func main() {
 		return
 	}
 
-	if flag.NArg() == 0 && *category == "" {
+	if *category == "" {
 		logger.Infof("category must be specified.")
 		return
 	}
@@ -124,12 +126,22 @@ func main() {
 		WorkDir:     userRoot,
 	}
 
+	logger.Debugf("before search")
 	child, _ := context.Search()
+	logger.Debugf("child = %v", child)
 	if child != nil {
-		logger.Debugf("Server has been already serving")
-		executeCommand()
-		return
+		process, _ := os.FindProcess(child.Pid)
+		if process != nil {
+			err := process.Signal(syscall.Signal(0))
+			if err == nil {
+				logger.Debugf("Server has been already serving")
+				executeCommand()
+				return
+			}
+		}
 	}
+
+	logger.Debugf("starting server")
 
 	if flag.NArg() > 0 && flag.Arg(0) == "kill-server" {
 		log.Printf("server is not running, do nothing")
